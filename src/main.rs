@@ -13,6 +13,14 @@ use tracing_subscriber::{filter::Targets, layer::SubscriberExt, util::Subscriber
 
 #[tokio::main]
 async fn main() {
+    let _guard = sentry::init((
+        std::env::var("SENTRY_DSN").expect("$SENTRY_DSN must be set"),
+        sentry::ClientOptions {
+            release: sentry::release_name!(),
+            ..Default::default()
+        },
+    ));
+
     let filter = Targets::from_str(std::env::var("RUST_LOG").as_deref().unwrap_or("info"))
         .expect("RUST_LOG should be a valid tracing filter");
     tracing_subscriber::fmt()
@@ -22,7 +30,9 @@ async fn main() {
         .with(filter)
         .init();
 
-    let app = Router::new().route("/", get(root_get));
+    let app = Router::new()
+        .route("/", get(root_get))
+        .route("/panic", get(|| async { panic!("This is a test panic") }));
 
     let addr = "0.0.0.0:8080".parse().unwrap();
     info!("Listening on {addr}");
